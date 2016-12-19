@@ -1,9 +1,14 @@
 package src;
 
 import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.document.Document;
+import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.util.BytesRef;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class ExampleBaselines {
 	
@@ -36,7 +41,7 @@ public class ExampleBaselines {
 		// RM3 settings
 		double weightOriginalQuery = 0.5;
 
-		String run = "testing";
+		String run = "defaults";
 
         if(run.contains("defaults")) {
             // Get QL search results
@@ -64,6 +69,23 @@ public class ExampleBaselines {
         }
         if(run.contains("testing")){
             System.out.println(searcher.getIndex().maxDoc());
+            Document test = searcher.getIndex().document(0);
+            System.out.println(test.getField(fieldSearch));
+            System.out.println(searcher.getIndex().getTermVector(0, fieldSearch));
+        }
+        if(run.contains("testRM1")){
+            // Get QL search results
+            List<SearchResult> QLresults = searcher.search(fieldSearch, LuceneUtils.tokenize(query, analyzer), mu, top);
+            for (int ix = 0; ix < QLresults.size(); ix++) {
+                QLresults.get(ix).setDocno(LuceneUtils.getDocno(searcher.getIndex(), fieldDocno, QLresults.get(ix).getDocid()));
+                System.out.printf("%-10s%-6d%-15d%-25s%10.4f\n", "QL", (ix + 1), QLresults.get(ix).getDocid(), QLresults.get(ix).getDocno(), QLresults.get(ix).getScore());
+            }
+
+            Set<String> voc = searcher.getVocab(fieldSearch, QLresults);
+            for(String term : voc){
+
+            }
+
         }
 		searcher.close();
 		

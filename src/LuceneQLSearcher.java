@@ -52,9 +52,11 @@ public class LuceneQLSearcher extends AbstractQLSearcher {
 		}
 	}
 
-	public Map<String, Double> estimateMixtureModel( String field, List<String> terms, double lambda, int numfbdocs, int numfbterms ) throws IOException {
+    Map<String, Integer[]> wordFreqInDoc;
+    // Janet's method
+    public void getWordFrequencies(String field, List<String> terms) throws IOException{
         // Stores each term and an array indexed by docid that contains the frequency of that term in that doc
-        Map<String, Integer[]> query_postings = new HashMap<>();
+        wordFreqInDoc = new HashMap<>();
         PostingsEnum posting;
         for(String term: terms){
             posting = MultiFields.getTermDocsEnum( index, field, new BytesRef( term ), PostingsEnum.FREQS );
@@ -65,31 +67,77 @@ public class LuceneQLSearcher extends AbstractQLSearcher {
                 // and returns the docid of the current entry (document). Note that this is an internal Lucene docid.
                 // It returns PostingsEnum.NO_MORE_DOCS if you have reached the end of the posting list.
                 while ( ( docid = posting.nextDoc() ) != PostingsEnum.NO_MORE_DOCS ) {
-                    int freq = posting.freq(); // get the frequency of the term in the current document
-                    term_posting[docid] = freq;
+					// get the frequency of the term in the current document
+                    // and associate it with its docid
+					term_posting[docid] = posting.freq();
                 }
             }
-            query_postings.put(term, term_posting);
+            wordFreqInDoc.put(term, term_posting);
         }
-//        for(int id = 0; id < this.index.maxDoc(); id++){
+
+    }
+
+    public double calc_expansion(List<String> query_terms, Set<String> expansion_terms){
+        if(wordFreqInDoc==null){
+            System.out.println("ERROR: Word frequencies are null. Please run getWordFrequencies first.");
+            return -1.0;
+        }
+
+        
+        return 0.0;
+    }
+
+    // Janet's method
+	public Map<String, Double> estimateMixtureModel( String field, List<String> terms, double lambda, int numfbdocs, int numfbterms ) throws IOException {
+        // iterate through
+        for(int id = 0; id < this.index.maxDoc(); id++){
 //            double cnt_wordInDoc
-//        }
+        }
+
         return null;
+    }
+
+    private double t_n(int n, double lambda){
+        return 0.0;
+    }
+
+    private double query_topic_model(int nPlusOne, String term, double lambda){
+        int n = nPlusOne - 1;
+
+        if(wordFreqInDoc==null){
+            System.out.println("ERROR: Word frequencies are null. Please run getWordFrequencies first.");
+            return -1.0;
+        }
+
+        if(n < 0) return 1; // stopping condition
+
+        // order doesn't matter, so n will simply be the docid we retrieve
+//        for(int docid = 0; docid < n; docid++) {
+//            query_postings.get(term)[n]
+//        }
+        return 0.0;
+    }
+
+    // my method
+    public Set<String> getVocab(String field, List<SearchResult> results) throws IOException{
+        Set<String> voc = new HashSet<>();
+        for ( SearchResult result : results ) {
+            TermsEnum iterator = index.getTermVector( result.getDocid(), field ).iterator();
+            BytesRef br;
+            while ( ( br = iterator.next() ) != null ) {
+                if ( !isStopwords( br.utf8ToString() ) ) {
+                    voc.add( br.utf8ToString() );
+                }
+            }
+        }
+
+        return voc;
     }
 
 	public Map<String, Double> estimateQueryModelRM1( String field, List<String> terms, double mu, double mufb, int numfbdocs, int numfbterms ) throws IOException {
 		
 		List<SearchResult> results = search( field, terms, mu, numfbdocs );
-		Set<String> voc = new HashSet<>();
-		for ( SearchResult result : results ) {
-			TermsEnum iterator = index.getTermVector( result.getDocid(), field ).iterator();
-			BytesRef br;
-			while ( ( br = iterator.next() ) != null ) {
-				if ( !isStopwords( br.utf8ToString() ) ) {
-					voc.add( br.utf8ToString() );
-				}
-			}
-		}
+		Set<String> voc = getVocab(field, results);
 		
 		Map<String, Double> collector = new HashMap<>();
 		for ( SearchResult result : results ) {
